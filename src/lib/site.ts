@@ -44,9 +44,9 @@ export const PROJECTS: Project[] = [
       "Gated community of 27 exclusive villas on 2.2 acres, with a minimum of 5 cents of private land for every villa.",
     image: { src: "/img/caristo-villa.jpg", alt: "Inhouse Caristo villa exterior at dusk", width: 1600, height: 1024 },
     specs: [
-      { label: "Size", value: "1300+ sq ft" },
+      { label: "Size", value: "1300–3000 sq ft" },
       { label: "Type", value: "3 & 4 BHK" },
-      { label: "Price", value: "₹85 Lakh onwards" },
+      { label: "Price", value: "₹85 Lakh – ₹1.85 Cr" },
     ],
     meta: [
       { label: "Expected completion", value: "December 2027" },
@@ -79,8 +79,8 @@ export const COMPARISON = [
     project: "Inhouse Caristo" as FormProject,
     location: "Vengola",
     type: "3 & 4 BHK Villas",
-    size: "1300+ sq ft",
-    price: "₹85 Lakh onwards",
+    size: "1300–3000 sq ft",
+    price: "₹85 Lakh – ₹1.85 Cr",
     status: "Ongoing, Dec 2027",
     tone: "ongoing" as const,
   },
