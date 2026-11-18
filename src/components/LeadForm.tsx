@@ -2,8 +2,7 @@
 
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { COUNTRY_CODES, TRACKING_KEYS, validateLead, type LeadErrors, type LeadPayload } from "@/lib/lead";
-import { CONTACT, FORM_PROJECTS, PROJECTS, whatsappLink, type FormProject, type LeadIntent } from "@/lib/site";
-import { Icon } from "./Icon";
+import { CONTACT, FORM_PROJECTS, type FormProject, type LeadIntent } from "@/lib/site";
 
 type Props = {
   location: string;
@@ -43,7 +42,6 @@ export function LeadForm({ location, defaultProject, intent = "enquiry", showMes
   const [errors, setErrors] = useState<LeadErrors>({});
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [serverError, setServerError] = useState("");
-  const [submittedProject, setSubmittedProject] = useState<FormProject | "">("");
 
   useEffect(() => {
     readTracking();
@@ -87,46 +85,31 @@ export function LeadForm({ location, defaultProject, intent = "enquiry", showMes
         if (data.errors) setErrors(data.errors);
         throw new Error(data.error ?? "Something went wrong.");
       }
-      setSubmittedProject(payload.project);
       setStatus("done");
-      window.dataLayer?.push({ event: "lead_submit", form_location: location, project: payload.project, intent });
+      // Full page load to /thank-you so GTM can track it as a conversion page. No personal details go in the URL.
+      const qs = new URLSearchParams({ intent, form: location });
+      if (payload.project) qs.set("project", payload.project);
+      let redirected = false;
+      const goToThankYou = () => {
+        if (redirected) return;
+        redirected = true;
+        window.location.assign(`/thank-you?${qs}`);
+      };
+      // Let GTM fire lead_submit tags before leaving the page; fall back if GTM is blocked or slow.
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: "lead_submit",
+        form_location: location,
+        project: payload.project,
+        intent,
+        eventCallback: goToThankYou,
+        eventTimeout: 1500,
+      });
+      setTimeout(goToThankYou, 1500);
     } catch (err) {
       setStatus("error");
       setServerError(err instanceof Error ? err.message : "Something went wrong.");
     }
-  }
-
-  if (status === "done") {
-    const brochure = PROJECTS.find((p) => p.name === submittedProject)?.brochureUrl;
-    return (
-      <div className="py-4 text-center" role="status">
-        <span className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-brand-soft text-brand">
-          <Icon name="check" className="size-7" />
-        </span>
-        <h4 className="font-display text-2xl text-navy-deep">Thank you!</h4>
-        <p className="mt-2 text-muted">
-          {intent === "brochure"
-            ? brochure
-              ? "Your brochure is ready to download. Our team will also call you shortly."
-              : "Our team will send the brochure to your WhatsApp and email shortly."
-            : intent === "visit"
-              ? "Our team will call you shortly to fix a convenient time for your site visit."
-              : "Our team will call you back shortly."}
-        </p>
-        <div className="mt-5 flex flex-wrap justify-center gap-3">
-          {intent === "brochure" && brochure && (
-            <a href={brochure} className="btn btn-primary" target="_blank" rel="noopener">
-              <Icon name="download" />
-              Download Brochure
-            </a>
-          )}
-          <a href={whatsappLink()} className="btn btn-outline" target="_blank" rel="noopener">
-            <Icon name="whatsapp" />
-            WhatsApp us now
-          </a>
-        </div>
-      </div>
-    );
   }
 
   const id = (n: string) => `${uid}-${n}`;
@@ -222,8 +205,8 @@ export function LeadForm({ location, defaultProject, intent = "enquiry", showMes
       </label>
       {err("consent")}
 
-      <button type="submit" className="btn btn-primary mt-1 w-full" disabled={status === "sending"}>
-        {status === "sending" ? "Sending…" : (submitLabel ?? (intent === "brochure" ? "Get Brochure" : "Submit Enquiry"))}
+      <button type="submit" className="btn btn-primary mt-1 w-full" disabled={status === "sending" || status === "done"}>
+        {status === "sending" ? "Sending…" : status === "done" ? "Thank you! Redirecting…" :(submitLabel ?? (intent === "brochure" ? "Get Brochure" : "Submit Enquiry"))}
       </button>
 
       {status === "error" && (
